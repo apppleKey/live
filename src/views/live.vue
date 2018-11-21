@@ -37,6 +37,7 @@
       <video-player v-if="videosrc" class="vjs-custom-skin mp4 " width='640px' height='480px' ref="videoPlayer"   :options="playerOptions"
        @ready="onPlayerReadied" 
        @timeupdate="onTimeupdate">
+    当前浏览器版本太低，不支持播放此类视频
       </video-player>
       <img v-else :src="logoimg"  alt="" style="width:100%;height:100%;boder-radius:5px;" >
 
@@ -65,9 +66,10 @@
 
 <script>
 import Switcher from "@/components/Switcher";
+import { md5 } from "@/../static/lib/md5.js";
+import { os, Base64 } from "@/../static/lib/utils.js";
 
 const isProduction = process.env.NODE_ENV === "production";
-// console.log(process.env.NODE_ENV + "环境");
 
 export default {
   name: "live",
@@ -148,30 +150,10 @@ export default {
   },
 
   created() {
-    var os = (function() {
-      var ua = navigator.userAgent,
-        isWindowsPhone = /(?:Windows Phone)/.test(ua),
-        isSymbian = /(?:SymbianOS)/.test(ua) || isWindowsPhone,
-        isAndroid = /(?:Android)/.test(ua),
-        isFireFox = /(?:Firefox)/.test(ua),
-        isChrome = /(?:Chrome|CriOS)/.test(ua),
-        isTablet =
-          /(?:iPad|PlayBook)/.test(ua) ||
-          (isAndroid && !/(?:Mobile)/.test(ua)) ||
-          (isFireFox && /(?:Tablet)/.test(ua)),
-        isPhone = /(?:iPhone)/.test(ua) && !isTablet,
-        isPc = !isPhone && !isAndroid && !isSymbian;
-      return {
-        isTablet: isTablet,
-        isPhone: isPhone,
-        isAndroid: isAndroid,
-        isPc: isPc
-      };
-    })();
     if (os.isPc) {
       this.getList();
-    }else{
-      this.$router.push("/mLive")
+    } else {
+      this.$router.push("/mLive");
     }
   },
 
@@ -205,14 +187,33 @@ export default {
     getList() {
       this.loading = true;
       this.$axios
-        .get("/football/list")
+        .get("/wewin-rest/auth", {
+          params: { userName: "admin", password: "admin" }
+        })
         .then(res => {
-          this.loading = false;
-          this.data = this.dealData(res.data);
+          var salt = res.data.randomKey;
+          var bs64 = new Base64();
+          var json = JSON.stringify({"sportsType": -1, "startTime": "" });
+          var encode = bs64.encode(json);
+          var md5Srt = md5(encode + salt);
+          var Authorization = "Bearer " + res.data.token;
+          this.$axios({
+            method: "post",
+            url: "/wewin-rest/football/list",
+            data: JSON.stringify({ object: encode, sign: md5Srt }),
+            headers: {
+              Authorization: Authorization,
+              "Content-Type": "application/json"
+            }
+          }).then(res => {
+            this.loading = false;
+        this.data = this.dealData(res.data);
+          });
         })
         .catch(err => {
           this.loading = false;
-          alert(err.message);
+          console.log(err);
+          // alert(err.message);
         });
     },
 
@@ -394,7 +395,7 @@ body {
   border-radius: 4px;
   box-sizing: border-box;
   background-color: #242526;
-  font-size: 14px
+  font-size: 14px;
 }
 
 .live_title {
@@ -403,24 +404,22 @@ body {
   height: 55px;
   padding: 0 24px;
   line-height: 55px;
-  background-color: #0C0C0D;
+  background-color: #0c0c0d;
   font-family: PingFangSC-Light;
   font-weight: 300;
   color: rgba(255, 255, 255, 1);
   font-size: 16px;
 }
 
-
 .live_title span:nth-child(2) {
   float: right;
-  font-size: 14px
+  font-size: 14px;
 }
-
 
 .list_body {
   background-color: #242526;
   height: 414px;
-  overflow-y: auto
+  overflow-y: auto;
 }
 
 /* 类别名称 */
@@ -435,7 +434,6 @@ body {
   line-height: 38px;
   padding: 0 11px;
   cursor: pointer;
-
 }
 
 .live_name .arrow {
@@ -451,7 +449,7 @@ body {
   border-bottom: 1px solid rgba(242, 248, 255, 0.05);
   cursor: pointer;
   box-sizing: border-box;
-  transform: .5 easy-in-out;
+  transform: 0.5 easy-in-out;
   overflow: hidden;
 }
 
@@ -461,7 +459,7 @@ body {
 }
 
 .live_time {
-  color: #F2F8FF;
+  color: #f2f8ff;
 }
 
 .leagueMatch {
@@ -485,7 +483,6 @@ body {
   /* background-color: #000; */
   float: right;
   border-radius: 5px;
-
 }
 
 .mp4 {
@@ -497,15 +494,12 @@ body {
   overflow: hidden;
 }
 
-
-
 /* .video-js .vjs-big-play-button   { 
   top: 50%;
   left: 50%;
   margin-left: -1.5rem;
   margin-top: -.75rem;
 } */
-
 
 /* video::-webkit-media-controls-fullscreen-button {
   display: none;
@@ -517,7 +511,6 @@ body {
 /* video::-webkit-media-controls-enclosure{
   display:none !important;
 } */
-
 
 /*滚动条样式*/
 .innerbox::-webkit-scrollbar {
@@ -542,19 +535,18 @@ body {
 }
 
 .yellow {
-  color: #FFDD33;
+  color: #ffdd33;
 }
 
 .orange {
-  color: #FF3333;
+  color: #ff3333;
 }
 
 .red {
-  color: #FF3333;
+  color: #ff3333;
 }
 
 .green {
-  color: #00CC29;
+  color: #00cc29;
 }
-
 </style>

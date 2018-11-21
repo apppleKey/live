@@ -60,7 +60,8 @@
 
 <script>
 import Switcher from "@/components/Switcher";
-
+import { md5 } from "@/../static/lib/md5.js";
+import { os, Base64 } from "@/../static/lib/utils.js";
 const isProduction = process.env.NODE_ENV === "production";
 // console.log(process.env.NODE_ENV + "环境");
 import "swiper/dist/css/swiper.css";
@@ -176,15 +177,37 @@ export default {
 
     getList() {
       this.loading = true;
-      this.$axios
-        .get("/football/list")
+       this.$axios
+        .get("/wewin-rest/auth", {
+          params: { userName: "admin", password: "admin" }
+        })
         .then(res => {
-          this.loading = false;
-          this.data = this.dealData(res.data);
+          // console.log(res.data); //
+          var salt = res.data.randomKey;
+
+          var bs64 = new Base64();
+          var json = JSON.stringify({ "sportsType": -1, "startTime": "" });
+          var encode = bs64.encode(json);
+          var md5Srt = md5(encode + salt);
+          var Authorization = "Bearer " + res.data.token;
+     
+          this.$axios({
+            method: "post",
+            url: "/wewin-rest/football/list",
+            data: JSON.stringify({ object: encode, sign: md5Srt }),
+            headers: {
+              Authorization: Authorization,
+              "Content-Type": "application/json"
+            }
+          }).then(res => {
+            this.loading = false;
+        this.data = this.dealData(res.data);
+          });
         })
         .catch(err => {
           this.loading = false;
-          alert(err.message);
+          console.log(err);
+          // alert(err.message);
         });
     },
     // 选择分类
