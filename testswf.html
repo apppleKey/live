@@ -1,0 +1,44 @@
+
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="UTF-8">
+<title>开启flash</title>
+ 
+</head>
+<body>
+<embed src="./static/media/video-js.swf" quality="high" pluginspage="http://www.macromedia.com/go/getflashplayer"
+ type="application/x-shockwave-flash" 
+ width="100" height="100">
+    
+<button onclick="demo();">click</button>
+</body>
+<script>
+    function demo(){
+      var flag = false;
+      if(window.ActiveXObject){
+        try{
+          var swf = new ActiveXObject("ShockwaveFlash.ShockwaveFlash");
+          if(swf){
+            flag = true;
+          }
+        }catch(e){
+        }
+      }else{
+        try{
+          var swf = navigator.plugins['Shockwave Flash'];
+          if(swf){
+            flag = true;
+          }
+        }catch(e){
+        }
+      }
+      if(flag){
+        console.log("running ok");
+      }else{
+        console.log("running error");
+      }
+    }
+
+</script>
+</html>

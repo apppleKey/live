@@ -39,8 +39,10 @@
        @timeupdate="onTimeupdate">
     当前浏览器版本太低，不支持播放此类视频
       </video-player>
-      <img v-else :src="logoimg"  alt="" style="width:100%;height:100%;boder-radius:5px;" >
-
+      <img v-if="!videosrc&&!flashNoSuport" :src="logoimg"  alt="" style="width:100%;height:100%;boder-radius:5px;" >
+      <embed v-if="flashNoSuport" src="./static/media/video-js.swf" quality="high" pluginspage="http://www.macromedia.com/go/getflashplayer"
+      type="application/x-shockwave-flash" 
+      width="100%" height="100%" style="postion:absolute">
     </div>
      <!-- <div class="selectWrapper">
 
@@ -78,6 +80,7 @@ export default {
   },
   data() {
     return {
+      flashNoSuport: false,
       logoimg: isProduction
         ? "/docs/static/images/default.png"
         : "/static/images/default.png",
@@ -152,12 +155,39 @@ export default {
   created() {
     if (os.isPc) {
       this.getList();
+      this.checkFlash();
     } else {
       this.$router.push("/mLive");
     }
   },
 
   methods: {
+    // 检测浏览器是否启用flash
+    checkFlash() {
+      var flag = false;
+      if (window.ActiveXObject) {
+        try {
+          var swf = new ActiveXObject("ShockwaveFlash.ShockwaveFlash");
+          if (swf) {
+            flag = true;
+          }
+        } catch (e) {}
+      } else {
+        try {
+          var swf = navigator.plugins["Shockwave Flash"];
+          if (swf) {
+            flag = true;
+          }
+        } catch (e) {}
+      }
+      if (flag) {
+        console.log("flash ok");
+        this.flashNoSuport = false;
+      } else {
+        console.log("flash error");
+        this.flashNoSuport = true;
+      }
+    },
     onPlayerReadied() {
       if (!this.initialized) {
         this.initialized = true;
@@ -193,7 +223,7 @@ export default {
         .then(res => {
           var salt = res.data.randomKey;
           var bs64 = new Base64();
-          var json = JSON.stringify({"sportsType": -1, "startTime": "" });
+          var json = JSON.stringify({ sportsType: -1, startTime: "" });
           var encode = bs64.encode(json);
           var md5Srt = md5(encode + salt);
           var Authorization = "Bearer " + res.data.token;
@@ -207,7 +237,7 @@ export default {
             }
           }).then(res => {
             this.loading = false;
-        this.data = this.dealData(res.data);
+            this.data = this.dealData(res.data);
           });
         })
         .catch(err => {
@@ -483,6 +513,7 @@ body {
   /* background-color: #000; */
   float: right;
   border-radius: 5px;
+  position: relative;
 }
 
 .mp4 {
