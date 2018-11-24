@@ -4,6 +4,7 @@ import Router from 'vue-router'
 // import playback from '@/views/playback'
 const live = () => import('@/views/live')
 const mLive = () => import('@/views/mLive')
+const test = () => import('@/views/live11')
 
 Vue.use(Router)
 
@@ -17,6 +18,10 @@ export default new Router({
       path: '/mLive',
       name: 'mLive',
       component: mLive
+    }, {
+      path: '/test',
+      name: 'test',
+      component: test
     }
   ]
 })

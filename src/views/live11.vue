@@ -221,19 +221,18 @@ export default {
           params: { userName: "admin", password: "admin" }
         })
         .then(res => {
-          this.salt = res.data.randomKey;
-          this.bs64 = new Base64();
-          this.token=res.data.token
+          var salt = res.data.randomKey;
+          var bs64 = new Base64();
           var json = JSON.stringify({ sportsType: -1, startTime: "" });
-          var encode = this.bs64.encode(json);
-          var md5Srt = md5(encode + this.salt);
-          this.Authorization = "Bearer " + this.token;
+          var encode = bs64.encode(json);
+          var md5Srt = md5(encode + salt);
+          var Authorization = "Bearer " + res.data.token;
           this.$axios({
             method: "post",
             url: "/wewin-rest/football/list",
             data: JSON.stringify({ object: encode, sign: md5Srt }),
             headers: {
-              Authorization: this.Authorization,
+              Authorization: Authorization,
               "Content-Type": "application/json"
             }
           }).then(res => {
@@ -246,28 +245,6 @@ export default {
           console.log(err);
           // alert(err.message);
         });
-    },
-
-    getDfUrl(item) {
-      console.log(item.secId,this.salt,this.token)
-      this.loading = true;
-      var json = JSON.stringify({ secId: item.secId, playType:0,tranScoding:0 });
-      var encode = this.bs64.encode(json);
-      var md5Srt = md5(encode + this.salt);
-     
-      this.$axios({
-        method: "post",
-        url: "/wewin-rest/football/transcoding",
-        data: JSON.stringify({ object: encode, sign: md5Srt }),
-        headers: {
-          Authorization: this.Authorization,
-          "Content-Type": "application/json"
-        }
-      }).then(res => {
-        this.loading = false;
-        console.log(res)
-        // this.data = this.dealData(res.data);
-      });
     },
 
     // 序列化列表
@@ -326,11 +303,11 @@ export default {
             1
         );
         if (begin > tomorrow && begin < afterTomorrow) {
-          // console.log(
-          //   this.moment(begin),
-          //   this.moment(tomorrow),
-          //   this.moment(afterTomorrow)
-          // );
+          console.log(
+            this.moment(begin),
+            this.moment(tomorrow),
+            this.moment(afterTomorrow)
+          );
           item.exTime = "明日";
         } else if (begin > afterTomorrow) {
           var month = begin.getMonth() + 1; //月
@@ -342,7 +319,7 @@ export default {
 
     //自己封装的moment
     moment(date) {
-      var now = date;
+      var now = date
       var year = now.getFullYear(); //年
       var month = now.getMonth() + 1; //月
       var day = now.getDate(); //日
@@ -374,7 +351,6 @@ export default {
 
     // 点击播放直播
     playVideo(item) {
-      this.getDfUrl(item)
       if (!item.isliving) return alert("尚未开播");
       this.destoryVideo();
       this.videosrc = item.rtmpUrl;
