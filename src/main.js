@@ -14,7 +14,9 @@ import "./assets/main.css"
 import axios from "axios"
 Vue.prototype.$axios = axios;
 // import pkg from '../package.json'
-
+import 'element-ui/lib/theme-chalk/index.css';
+import ElementUI from 'element-ui';
+Vue.use(ElementUI,{size: 'small', zIndex: 3000});
 
 Vue.config.productionTip = false
 Vue.use(VueVideoPlayer)

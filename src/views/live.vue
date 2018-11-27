@@ -1,25 +1,37 @@
 <template>
- <div class="app">
+  <div class="app">
     <div class="left">
       <div class="live_title">
         <span>直播列表</span>
-        <span>比赛直播中<span class="yellow"> {{totalliving}} </span>场</span>
+        <span>
+          比赛直播中
+          <span class="yellow">{{totalliving}}</span>场
+        </span>
       </div>
       <div class="list_body innerbox">
-        <div v-for='item in data ' :key='item.title'>
+        <div v-for="item in data " :key="item.title">
           <div class="live_name" @click="flodList(item)">
             <div class="fl">{{item.title}}</div>
-            <div class="fr"> <span class="orange">{{item.list.length||0}}</span><span class="mlr">场赛事</span>
-              <img v-if="!item.isFlod" src="../../static/images/icon_down@2x.png" class="arrow" alt="">
-              <img v-else src="../../static/images/icon_up@2x.png" class="arrow" alt="">
+            <div class="fr">
+              <span class="orange">{{item.list.length||0}}</span>
+              <span class="mlr">场赛事</span>
+              <img v-if="!item.isFlod" src="../../static/images/icon_down@2x.png" class="arrow" alt>
+              <img v-else src="../../static/images/icon_up@2x.png" class="arrow" alt>
             </div>
           </div>
 
-          <div v-if="item.isFlod" v-for="live in item.list" :key="live.secId" 
-          class="live_item_info " @click="playVideo(live)">
+          <div
+            v-if="item.isFlod"
+            v-for="live in item.list"
+            :key="live.secId"
+            class="live_item_info"
+            @click="playVideo(live)"
+          >
             <div class="status">
               <div class="live_time clearfix">
-                <span class='fl'>{{live.exTime}} {{live.startTime|timeFromat}} - {{live.endTime|timeFromat}}</span>
+                <span
+                  class="fl"
+                >{{live.exTime}} {{live.startTime|timeFromat}} - {{live.endTime|timeFromat}}</span>
                 <span v-if="live.isliving" class="livingState fr red">正在直播</span>
                 <span v-else class="livingState fr green">即将直播</span>
               </div>
@@ -32,19 +44,35 @@
         </div>
       </div>
     </div>
-    <div class="right" >
-    
-      <video-player v-if="videosrc" class="vjs-custom-skin mp4 " width='640px' height='480px' ref="videoPlayer"   :options="playerOptions"
-       @ready="onPlayerReadied" 
-       @timeupdate="onTimeupdate">
-            当前浏览器版本太低，不支持播放此类视频
-      </video-player>
-      <img v-if="!videosrc&&!flashNoSuport" :src="logoimg"  alt="" style="width:100%;height:100%;boder-radius:5px;" >
-      <embed v-if="flashNoSuport" src="./static/media/video-js.swf" quality="high" pluginspage="http://www.macromedia.com/go/getflashplayer"
-      type="application/x-shockwave-flash" 
-      width="100%" height="100%" style="postion:absolute">
+    <div class="right" v-loading="loading_right">
+      <video-player
+        v-if="videosrc"
+        class="vjs-custom-skin mp4"
+        width="640px"
+        height="480px"
+        ref="videoPlayer"
+        :options="playerOptions"
+        @ready="onPlayerReadied"
+        @timeupdate="onTimeupdate"
+      >当前浏览器版本太低，不支持播放此类视频</video-player>
+      <img
+        v-if="!videosrc&&!flashNoSuport"
+        :src="logoimg"
+        alt
+        style="width:100%;height:100%;boder-radius:5px;"
+      >
+      <embed
+        v-if="flashNoSuport"
+        src="./static/media/video-js.swf"
+        quality="high"
+        pluginspage="http://www.macromedia.com/go/getflashplayer"
+        type="application/x-shockwave-flash"
+        width="100%"
+        height="100%"
+        style="postion:absolute"
+      >
     </div>
-     <!-- <div class="selectWrapper">
+    <!-- <div class="selectWrapper">
 
       Switch Tech：
       <div class="form-check">
@@ -59,11 +87,9 @@
           Flash
         </label>
       </div>
-    </div> -->
+    </div>-->
     <!-- <Switcher></Switcher> -->
   </div>
-  
-   
 </template>
 
 <script>
@@ -80,6 +106,7 @@ export default {
   },
   data() {
     return {
+      loading_right: false,
       flashNoSuport: false,
       logoimg: isProduction
         ? "/docs/static/images/default.png"
@@ -88,6 +115,7 @@ export default {
       data: [],
       flvPlayer: null,
       initialized: false,
+      currentVideo: {},
       currentTech: "",
       streams: {
         rtmp: "",
@@ -197,7 +225,8 @@ export default {
     },
     // record current time
     onTimeupdate(e) {
-      console.log("currentTime", e.cache_.currentTime);
+      this.loading_right = false;
+      // console.log("currentTime", e.cache_.currentTime);
     },
 
     enterStream() {
@@ -223,7 +252,7 @@ export default {
         .then(res => {
           this.salt = res.data.randomKey;
           this.bs64 = new Base64();
-          this.token=res.data.token
+          this.token = res.data.token;
           var json = JSON.stringify({ sportsType: -1, startTime: "" });
           var encode = this.bs64.encode(json);
           var md5Srt = md5(encode + this.salt);
@@ -248,13 +277,18 @@ export default {
         });
     },
 
-    getDfUrl(item) {
-      console.log(item.secId,this.salt,this.token)
-      this.loading = true;
-      var json = JSON.stringify({ secId: item.secId, playType:0,tranScoding:0 });
+    getDfUrl(type, cb) {
+      var item = this.currentVideo;
+      console.log(type,item.secId, this.salt, this.token);
+      this.loading_right = true;
+      var json = JSON.stringify({
+        secId: item.secId,
+        playType: 0,
+        tranScoding: type*1
+      });
       var encode = this.bs64.encode(json);
       var md5Srt = md5(encode + this.salt);
-     
+
       this.$axios({
         method: "post",
         url: "/wewin-rest/football/transcoding",
@@ -263,11 +297,21 @@ export default {
           Authorization: this.Authorization,
           "Content-Type": "application/json"
         }
-      }).then(res => {
-        this.loading = false;
-        console.log(res)
-        // this.data = this.dealData(res.data);
-      });
+      })
+        .then(res => {
+          this.loading_right = false;
+          console.log(res.data);
+          if (res.data.code == 200) {
+            this.playerOptions.sources[0].src = res.data.rtmpUrl;
+            cb && cb();
+          } else {
+            // console.log(res)
+          }
+        })
+        .catch(err => {
+          this.loading_right = false;
+          this.$message("当前资源失效,请尝试其他资源");
+        });
     },
 
     // 序列化列表
@@ -374,15 +418,57 @@ export default {
 
     // 点击播放直播
     playVideo(item) {
-      this.getDfUrl(item)
-      if (!item.isliving) return alert("尚未开播");
-      this.destoryVideo();
+      if (!item.isliving) return this.$alert("还没有开播哦,敬请期待...");
+
+      this.currentVideo = item;
+      this.loading_right = true;
+      this.settingCtrl();
+      // this.destoryVideo();
       this.videosrc = item.rtmpUrl;
       this.playerOptions.sources[1].src = item.m3u8Url;
       this.playerOptions.sources[0].src = item.rtmpUrl;
       this.playerOptions.autoplay = true;
     },
 
+    settingCtrl() {
+      var _this = this;
+      setTimeout(() => {
+        $(".vjs-time-control").hide();
+        $(".vjs-duration-display").hide();
+        $(".vjs-remaining-time-display").hide();
+        $(".vjs-play-progress").hide();
+        $(".vjs-progress-control").hide();
+        if ($(".vjs-rate-control").length > 0) return;
+        $(".vjs-control-bar")
+          .append(`<button class="vjs-rate-control vjs-control vjs-button"
+     type="button" aria-live="polite"
+      aria-disabled="false" > <p>流畅</p>
+      <span aria-hidden="true"
+      class="vjs-icon-placeholder">
+    </span>
+    <ul class="rate_select">
+    <li class="rate_select_item" type="3">超清</li>
+    <li class="rate_select_item" type="2">高清</li>
+    <li class="rate_select_item" type="1">标清</li>
+    <li class="rate_select_item active" type="0">流畅</li>
+    </ul>
+    <span class="vjs-control-text">清晰度</span></button>`);
+
+        $(".vjs-control-bar").on("click", ".rate_select_item ", function() {
+          var ele=this;
+          _this.getDfUrl($(this).attr("type"), () =>{
+            $(".rate_select_item").map((i, v) => {
+              $(v).removeClass("active");
+            });
+            $(ele).addClass("active");
+            $(".vjs-rate-control p").html($(ele).html());
+            _this.loading_right = true;
+            // console.log("毁掉",$(ele).html())
+            // _this.settingCtrl()
+          });
+        });
+      }, 1000);
+    },
     // 销毁电影
     destoryVideo(cb) {
       if (!this.flvPlayer) return;

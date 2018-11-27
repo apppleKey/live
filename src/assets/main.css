@@ -60,3 +60,47 @@ body {
 .gray{
   color: gray
 }
+/* 播放暂停按钮 */
+.vjs-custom-skin>.video-js .vjs-big-play-button {
+  display: none;
+ }
+  
+ .vjs-rate-control {
+   margin: 0 10px;
+
+  cursor: pointer;
+  position: relative;
+}
+.vjs-rate-control p{
+  height: 100%;
+  line-height: 42px;
+  margin: 0;
+}
+.vjs-rate-control:hover  .rate_select{
+ display: block;
+}
+.rate_select {
+  display: none;
+  position: absolute;
+  bottom: 42px;
+  /* height: 60px; */
+  width: 40px;
+  background-color: rgb(204, 204, 204);
+  border-radius: 5px;
+  overflow: hidden;
+}
+.rate_select_item {
+  display: block;
+  margin: 0;
+  line-height: 35px;
+  font-size: 12px;
+  color: rgb(121, 121, 121);
+  overflow: hidden;
+}
+.rate_select_item.active {
+ color:#09f;
+}
+.rate_select_item:hover{
+  background-color: rgb(148, 148, 148);
+  color:#09f;
+}
