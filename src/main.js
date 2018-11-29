@@ -5,6 +5,8 @@ import Vue from 'vue'
 import App from './App'
 import router from './router'
 import VueVideoPlayer from 'vue-video-player'
+// import 'video.js/dist/lang/zh-CN'
+// import videojs from 'video.js/dist/video.js'
 import 'video.js/dist/video-js.css'
 import 'vue-video-player/src/custom-theme.css'
 import 'videojs-flash'
@@ -17,10 +19,9 @@ Vue.prototype.$axios = axios;
 import 'element-ui/lib/theme-chalk/index.css';
 import ElementUI from 'element-ui';
 Vue.use(ElementUI,{size: 'small', zIndex: 3000});
-
+// window.videojs=videojs
 Vue.config.productionTip = false
 Vue.use(VueVideoPlayer)
-
 /* eslint-disable no-new */
 new Vue({
   el: '#app',

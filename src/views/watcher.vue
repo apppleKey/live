@@ -1,11 +1,11 @@
 <template>
-  <div class="app">
-    <div class="left">
+  <div class="app" v-loading="loading">
+    <div class="left" :class="{on_list_hide:isShowList==false}">
       <div class="live_title">
-        <span>直播列表</span>
+        <span>播放列表</span>
         <span>
           比赛直播中
-          <span class="yellow">{{totalliving}}</span>场
+          <span class="yellow">{{totalliving}}</span> 场
         </span>
       </div>
       <div class="list_body innerbox">
@@ -41,64 +41,54 @@
                 {{live.homeTeam}} vs {{live.visitingTeam}}
               </div>
             </div>
-
-            <div class="live_item_info_playing"></div>
           </div>
         </div>
       </div>
     </div>
-    <div class="right" v-loading="loading_right">
-      <video-player
-        v-show="videosrc"
-        class="vjs-custom-skin mp4"
-        width="640px"
-        height="480px"
-        ref="videoPlayer"
-        :options="playerOptions"
-        @ready="onPlayerReadied"
-        @timeupdate="onTimeupdate"
-      >当前浏览器版本太低，不支持播放此类视频</video-player>
-      <img
-        v-if="!videosrc&&!flashNoSuport"
-        :src="logoimg"
-        alt
-        style="width:100%;height:100%;boder-radius:5px;"
+    <div class="right" :class="{on_list_hide:isShowList==false}">
+      <div
+        class="video_item"
+        v-for=" item in playerList"
+        :key="'videoEle'+item.secId"
+        @click="playVideo(item)"
       >
-      <embed
-        v-if="flashNoSuport"
-        src="./static/media/video-js.swf"
-        quality="high"
-        pluginspage="http://www.macromedia.com/go/getflashplayer"
-        type="application/x-shockwave-flash"
-        width="100%"
-        height="100%"
-        style="postion:absolute"
-      >
-    </div>
-
-    <!-- 注单链接 -->
-    <div class="betPageLink">
-      <a href="#">
-        <img src="/static/images/bet.png" alt>
-      </a>
-    </div>
-    <!-- <div class="selectWrapper">
-
-      Switch Tech：
-      <div class="form-check">
-        <input class="form-check-input" type="radio" name="tech" id="html5" value="Html5" v-model="currentTech" @change="changeTech">
-        <label class="form-check-label" for="html5">
-          Html5
-        </label>
+        <video-player
+          class="vjs-custom-skin"
+          :rew="'videoEle'+item.secId"
+          :ref="'videoEle'+item.secId"
+          :options="item.playerOptions"
+          @ready="onPlayerReadied"
+          @play="onPlayerPlay"
+          @timeupdate="onTimeupdate"
+        >当前浏览器版本太低，不支持播放此类视频</video-player>
+        <embed
+          v-if="flashNoSuport"
+          src="./static/media/video-js.swf"
+          quality="high"
+          pluginspage="http://www.macromedia.com/go/getflashplayer"
+          type="application/x-shockwave-flash"
+          width="100%"
+          height="100%"
+          style="postion:absolute"
+        >
+        <div class="video_details">
+          <p>
+            {{item.leagueMatch}}&nbsp;&nbsp;&nbsp;&nbsp;
+            {{item.homeTeam}} vs {{item.visitingTeam}}
+          </p>
+          <p>
+            {{item.exTime}} {{item.startTime|timeFromat}} - {{item.endTime|timeFromat}}
+            <span
+              v-if="item.isliving"
+              class="mr18 fr red"
+            >正在直播</span>
+            <span v-else class="fr green">即将直播</span>
+          </p>
+        </div>
       </div>
-      <div class="form-check">
-        <input class="form-check-input" type="radio" name="tech" id="flash" value="Flash" v-model="currentTech" @change="changeTech">
-        <label class="form-check-label" for="flash">
-          Flash
-        </label>
-      </div>
-    </div>-->
-    <!-- <Switcher></Switcher> -->
+
+      <img src="../../static/images/bet.png" alt="切换列表" class="list_toggle" @click="toggleShowList">
+    </div>
   </div>
 </template>
 
@@ -106,42 +96,39 @@
 import Switcher from "@/components/Switcher";
 import { md5 } from "@/../static/lib/md5.js";
 import { os, Base64 } from "@/../static/lib/utils.js";
-import VueVideoPlayer from "vue-video-player";
-import ZN from "@/../static/lib/videojs.zh-CN.json";
-import * as videojs from "video.js/dist/video.js";
 const isProduction = process.env.NODE_ENV === "production";
 export default {
   name: "live",
-  components: {
-    Switcher
-  },
+
   data() {
     return {
+      loading: true,
+      isShowList: true,
       loading_right: false,
       flashNoSuport: false,
       logoimg: isProduction
         ? "/docs/static/images/default.png"
         : "/static/images/default.png",
+
       videosrc: "",
       data: [],
+
       flvPlayer: null,
+      playerList: [],
       initialized: false,
       currentVideo: {},
       currentTech: "",
+      isPlaying: false,
       streams: {
         rtmp: "",
         hls: ""
       },
       playerOptions: {
-        language: "zh-CN",
-        languages: {
-          "zh-CN": ZN
-        },
         overNative: true,
-        autoplay: false,
+        fluid: true,
         controls: true,
-        techOrder: ["flash", "html5"],
-        sourceOrder: true,
+        techOrder: ["flash"],
+        autoPlay: true,
         flash: {
           hls: { withCredentials: false },
           swf: isProduction
@@ -154,39 +141,19 @@ export default {
             type: "rtmp/mp4",
             src:
               "rtmp://qqjs.flylemon.cn/football/live_9vjsl0f8?auth_key=1542650400-0-0-9557f19bfebae0d204465d9d28f6e395"
-          },
-          {
-            withCredentials: false,
-            type: "application/x-mpegURL",
-            src:
-              "http://qqjs.flylemon.cn/football/live_9vjsl0f8.m3u8?auth_key=1542650400-0-0-c627ef6c2da7277ad814af283651182e"
           }
         ],
         poster: isProduction
           ? "/docs/static/images/default.png"
-          : "/static/images/default.png",
-        controlBar: {
-          timeDivider: false, // 时间分割线
-          durationDisplay: false, // 总时间
-          progressControl: false, // 进度条
-          customControlSpacer: false, // 未知
-          currentTimeDisplay: false, //当前时间
-          remainingTimeDisplay: false, //总时间
-          fullscreenToggle: true, // 全屏
-          volumePanel: {
-            inline: false
-          }
-        }
+          : "/static/images/default.png"
       }
     };
   },
   computed: {
-    player() {
-      return this.$refs.videoPlayer.player;
-    },
-    currentStream() {
-      return this.currentTech === "Flash" ? "RTMP" : "HLS";
-    },
+    // player() {
+    //   return this.$refs.videoPlayer.player;
+    // },
+
     totalliving() {
       var total = 0;
       this.data.map(v => {
@@ -201,15 +168,9 @@ export default {
   },
 
   created() {
-    if (os.isPc) {
-      this.getList();
-      this.checkFlash();
-    } else {
-      this.$router.push("/mLive");
-    }
+    this.getList();
+    this.checkFlash();
   },
-  mounted() {},
-
   methods: {
     // 检测浏览器是否启用flash
     checkFlash() {
@@ -240,28 +201,28 @@ export default {
     onPlayerReadied() {
       if (!this.initialized) {
         this.initialized = true;
-        this.currentTech = this.player.techName_;
-        console.log(this.currentTech);
+        // this.currentTech = this.player.techName_;
       }
-    },
-    // record current time
-    onTimeupdate(e) {
-      this.loading_right = false;
-      // console.log("currentTime", e.cache_.currentTime);
     },
 
-    enterStream() {
-      this.playerOptions.sources[1].src = this.streams.hls;
-      this.playerOptions.sources[0].src = this.streams.rtmp;
-      this.playerOptions.autoplay = true;
+    onTimeupdate(player) {
+      // console.log(player);
+      // this.loading_right = false;
     },
-    changeTech() {
-      if (this.currentTech === "Html5") {
-        this.playerOptions.techOrder = ["html5"];
-      } else if (this.currentTech === "Flash") {
-        this.playerOptions.techOrder = ["flash"];
-      }
-      this.playerOptions.autoplay = true;
+    onPlayerPlay(player) {
+      console.log(player.id());
+      var playingId = player.id();
+      this.isPlaying = true;
+      var isAllPlaying = true;
+      this.playerList.map((v, i) => {
+        if (v.playerId == playingId) {
+          v.isPlaying = true;
+        }
+        if (v.isliving && !v.isPlaying) {
+          isAllPlaying = false;
+        }
+      });
+      this.isPlaying = isAllPlaying;
     },
 
     getList() {
@@ -291,28 +252,43 @@ export default {
             this.data = this.dealData(res.data);
           });
         })
+        .then(_ => {
+          this.playVideo();
+          var timer = setInterval(() => {
+            if (this.isPlaying == false) {
+              this.playVideo();
+            } else {
+              clearInterval(timer);
+            }
+          }, 3000);
+
+          var timer2 ;
+          try{
+              timer2 = setInterval(() => {
+              this.loop();
+                }, 6000);
+          }catch(e){
+            clearInterval(timer2 );
+            throw new Error(e)
+          }
+
+        })
         .catch(err => {
           this.loading = false;
           console.log(err);
-          // alert(err.message);
         });
     },
-
-    getDfUrl(type, cb) {
-      var item = this.currentVideo;
-      // console.log(type, item.secId, this.salt, this.token);
-      this.loading_right = true;
-      var json = JSON.stringify({
-        secId: item.secId,
-        playType: 0,
-        tranScoding: type * 1
-      });
+    // 定时更新列表
+    loop() {
+      // 1.获取列表
+      console.log("刷新")
+      var json = JSON.stringify({ sportsType: -1, startTime: "" });
       var encode = this.bs64.encode(json);
       var md5Srt = md5(encode + this.salt);
-
+      this.Authorization = "Bearer " + this.token;
       this.$axios({
         method: "post",
-        url: "/wewin-rest/football/transcoding",
+        url: "/wewin-rest/football/list",
         data: JSON.stringify({ object: encode, sign: md5Srt }),
         headers: {
           Authorization: this.Authorization,
@@ -320,23 +296,30 @@ export default {
         }
       })
         .then(res => {
-          this.loading_right = false;
-          // console.log(res.data.rtmpUrl);
-          if (res.data.code == 200) {
-            this.playerOptions.sources[0].src = res.data.rtmpUrl;
-            cb && cb();
-          } else {
-            // console.log(res)
-          }
+          this.loading = false;
+          // 2.判断正在播放
+          // 3,将播放器中过期的干掉,新有的生成新的播放器
+          this.data = this.dealFreshData(res.data);
+        })
+
+        .then(_ => {
+          // 4,播放
+          this.playVideo();
+          var timer = setInterval(() => {
+            if (this.isPlaying == false) {
+              this.playVideo();
+            } else {
+              clearInterval(timer);
+            }
+          }, 3000);
         })
         .catch(err => {
-          console.log(err.message);
-          this.loading_right = false;
-          this.$message("当前资源失效,请尝试其他资源");
+          this.loading = false;
+          console.log(err);
         });
     },
 
-    // 序列化列表
+    // 序列化第一次请求的列表
     dealData(data) {
       var list = [];
       // 类型(0 足球,1,篮球,2,网球,3 电竞,4 羽毛球,5 乒乓球,6 排球)
@@ -358,9 +341,12 @@ export default {
           isFlod: true
         });
       });
+
       // console.log(list)
       data.map((v, i) => {
         this.isliving(v);
+        v.playerOptions = JSON.parse(JSON.stringify(this.playerOptions));
+        this.playerList.push(v);
         list.map((vl, il) => {
           if (v.liveType == vl.liveType) {
             vl.count++;
@@ -372,6 +358,132 @@ export default {
       return list;
     },
 
+ 
+ loop() {
+      // 1.获取列表
+      // console.log("刷新")
+      var json = JSON.stringify({ sportsType: -1, startTime: "" });
+      var encode = this.bs64.encode(json);
+      var md5Srt = md5(encode + this.salt);
+      this.Authorization = "Bearer " + this.token;
+      this.$axios({
+        method: "post",
+        url: "/wewin-rest/football/list",
+        data: JSON.stringify({ object: encode, sign: md5Srt }),
+        headers: {
+          Authorization: this.Authorization,
+          "Content-Type": "application/json"
+        }
+      })
+        .then(res => {
+          this.loading = false;
+          // 2.判断正在播放
+          // 3,将播放器中过期的干掉,新有的生成新的播放器
+          this.data = this.dealFreshData(res.data);
+        })
+
+        .then(_ => {
+          // 4,播放
+          this.playVideo();
+          this.isPlaying=false;
+          var timer = setInterval(() => {
+              var isAllPlaying = true;
+              this.playerList.map((v, i) => {
+                if (v.isliving && !v.isPlaying) {
+                  isAllPlaying = false;
+                }
+              });
+              this.isPlaying = isAllPlaying;
+
+            if (this.isPlaying == false) {
+              this.playVideo();
+            } else {
+              clearInterval(timer);
+            }
+          }, 3000);
+        })
+        .catch(err => {
+          this.loading = false;
+          console.log(err);
+        });
+    },
+    //处理刷新请求的数据
+    dealFreshData(data) {
+      var list = [];
+      // 类型(0 足球,1,篮球,2,网球,3 电竞,4 羽毛球,5 乒乓球,6 排球)
+      var typeMap = [
+        "足球",
+        "篮球",
+        "网球",
+        "电竞",
+        "羽毛球",
+        "乒乓球",
+        "排球"
+      ];
+      typeMap.map((v, i) => {
+        list.push({
+          title: v + "赛事",
+          count: 0,
+          liveType: i,
+          list: [],
+          isFlod: true
+        });
+      });
+
+      // 拿掉播放器列表中中不在最新列表中的播放器
+      var delcount=0;
+      for (var i = this.playerList.length-1; i>=0; i--) {
+        var isInData = false;
+        // console.log(i);
+        data.map(v => {
+          if (this.playerList[i].secId == v.secId) {
+            isInData = true;
+            for (const key in v) {
+              this.playerList[i][key] = v[key];
+            }
+          }
+        });
+
+        if (!isInData) {
+          this.playerList.splice(i, 1);
+          delcount++
+          i++;
+        }
+      }
+
+      //把其他的放到播放列表中来
+
+      var addcount=0;
+      data.map((v, i) => {
+        this.isliving(v);
+        var isInPlayerList = false;
+        this.playerList.map(player => {
+          if (player.secId == v.secId) {
+            isInPlayerList = true;
+          }
+        });
+        if (!isInPlayerList) {
+          v.playerOptions = JSON.parse(JSON.stringify(this.playerOptions));
+          addcount++;
+          this.playerList.push(v);
+        }
+        // this.playerList.push(v);
+        //放到对应的分类下面
+        list.map((vl, il) => {
+          if (v.liveType == vl.liveType) {
+            vl.count++;
+            vl.list.push(v);
+          }
+        });
+      });
+       this.$notify.success({
+          title: '消息',
+          message: `新增${addcount}场次,过期${delcount}场次,刷新成功!`,
+           position: 'bottom-right'
+        });
+      // console.log(list);
+      return list;
+    },
     //判断是否是正在直播
     isliving(item) {
       var now = new Date();
@@ -392,11 +504,6 @@ export default {
             1
         );
         if (begin > tomorrow && begin < afterTomorrow) {
-          // console.log(
-          //   this.moment(begin),
-          //   this.moment(tomorrow),
-          //   this.moment(afterTomorrow)
-          // );
           item.exTime = "明日";
         } else if (begin > afterTomorrow) {
           var month = begin.getMonth() + 1; //月
@@ -404,30 +511,6 @@ export default {
           item.exTime = month + "月" + day + "日";
         }
       }
-    },
-
-    //自己封装的moment
-    moment(date) {
-      var now = date;
-      var year = now.getFullYear(); //年
-      var month = now.getMonth() + 1; //月
-      var day = now.getDate(); //日
-
-      var hh = now.getHours(); //时
-      var mm = now.getMinutes(); //分
-      var ss = now.getSeconds(); //秒
-      var clock = year + "-";
-      if (month < 10) clock += "0";
-      clock += month + "-";
-      if (day < 10) clock += "0";
-      clock += day + " ";
-      if (hh < 10) clock += "0";
-      clock += hh + ":";
-      if (mm < 10) clock += "0";
-      clock += mm + ":";
-      if (ss < 10) clock += "0";
-      clock += ss;
-      return clock;
     },
 
     // 折叠list
@@ -438,87 +521,32 @@ export default {
       this.$forceUpdate();
     },
 
+    // 显示或隐藏列表
+    toggleShowList() {
+      this.isShowList = !this.isShowList;
+    },
+
     // 点击播放直播
     playVideo(item) {
-      if (!item.isliving) return this.$alert("还没有开播哦,敬请期待...");
-      // var lastRate = this.currentVideo.rate;//上个视屏的清晰度
-      this.currentVideo = item;
-      // if (!lastRate) {
-      this.currentVideo.rate = "流畅";
-      // } else {
-      // this.currentVideo.rate =lastRate;
-      // 载入该清晰度的视屏
-
-      // this.getDfUrl
-      // return;
-      // }
-      this.loading_right = true;
-      this.settingCtrl();
-      // this.destoryVideo();
-      this.videosrc = item.rtmpUrl;
-      this.playerOptions.sources[1].src = item.m3u8Url;
-      this.playerOptions.sources[0].src = item.rtmpUrl;
-      this.playerOptions.autoplay = true;
-    },
-
-    settingCtrl() {
-      var _this = this;
-      setTimeout(() => {
-        // $(".vjs-time-control").hide();
-        // $(".vjs-duration-display").hide();
-        // $(".vjs-remaining-time-display").hide();
-        // $(".vjs-play-progress").hide();
-        // $(".vjs-progress-control").hide();
-        if ($(".vjs-rate-control").length > 0) {
-          return;
+      console.log("全播");
+      this.playerList.map((v, i) => {
+        // console.log(v);
+        if (v.isliving) {
+          v.playerOptions.sources[0].src = v.rtmpUrl;
+          var videoRef = "videoEle" + v.secId;
+          // console.log(this.$refs[videoRef][0].player);
+          v.playerId = this.$refs[videoRef][0].player.id();
+          this.$refs[videoRef][0].player.play();
         }
-        $(".vjs-control-bar")
-          .append(`<button class="vjs-rate-control vjs-menu-button vjs-menu-button-popup vjs-control vjs-button vjs-hiddenvjs-control vjs-button"
-     type="button" aria-live="polite"
-      aria-disabled="false" > <p>标清</p>
-      <span aria-hidden="true"
-      class="vjs-icon-placeholder">
-    </span>
-    <ul class="rate_select">
-    <li class="rate_select_item" type="3">超清</li>
-    <li class="rate_select_item" type="2">高清</li>
-    <li class="rate_select_item" type="1">标清</li>
-    <li class="rate_select_item active" type="0">流畅</li>
-    </ul>
-    <span class="vjs-control-text">清晰度</span></button>`);
-        $(".rate_select_item").map((i, v) => {
-          if ($(v).html() == _this.currentVideo.rate) {
-            $(v).addClass("active");
-          } else {
-            $(v).removeClass("active");
-          }
-        });
+      });
 
-        $(".vjs-rate-control p").html(_this.currentVideo.rate);
-        var isFullscreen = this.player.isFullscreen();
-        $(".vjs-control-bar").on("click", ".rate_select_item", function() {
-          if ($(this).hasClass("active")) return;
-          var ele = this;
-          _this.getDfUrl($(this).attr("type"), () => {
-            _this.currentVideo.rate = $(ele).html();
-            // console.log(this.player.isFullscreen)
-            _this.loading_right = true;
-            isFullscreen && this.player.enterFullWindow();
-            // console.log("毁掉",$(ele).html())
-            _this.settingCtrl();
-          });
-        });
-      }, 1000);
-    },
-    // 销毁电影
-    destoryVideo(cb) {
-      if (!this.flvPlayer) return;
-      this.flvPlayer.pause();
-      this.flvPlayer.unload();
-      this.flvPlayer.detachMediaElement();
-      this.flvPlayer.destroy();
-      this.flvPlayer = null;
-      // cb && cb();
+      if (item && !item.isliving)
+        return this.$alert("还没有开播哦,敬请期待...");
+      // this.currentVideo = item;
+      // this.loading_right = true;
+      // this.videosrc = item.rtmpUrl;
+      // this.playerOptions.sources[0].src = item.rtmpUrl;
+      // this.player.play();
     }
   }
 };
@@ -559,14 +587,10 @@ body {
 .app {
   /* margin: 0 auto; */
   vertical-align: center;
-  height: 480px;
-  width: 964px;
+  height: 100%;
+  width: 100%;
   background-color: white;
   border-radius: 5px;
-  position: absolute;
-  left: 50%;
-  top: 50%;
-  margin: -268px -482px;
 }
 
 .left {
@@ -577,8 +601,11 @@ body {
   box-sizing: border-box;
   background-color: #242526;
   font-size: 14px;
+  transition: all 1s;
 }
-
+.left.on_list_hide {
+  margin-left: -500px;
+}
 .live_title {
   text-align: left;
   border-radius: 5px;
@@ -599,7 +626,7 @@ body {
 
 .list_body {
   background-color: #242526;
-  height: 414px;
+  /* height: 414px; */
   overflow-y: auto;
 }
 
@@ -634,7 +661,7 @@ body {
   overflow: hidden;
   position: relative;
 }
-.live_item_info:hover{
+.live_item_info:hover {
   background-color: rgba(255, 255, 255, 0.1);
 }
 .live_item_info_playing {
@@ -651,6 +678,7 @@ body {
   bottom: 0;
   background-color: rgba(255, 255, 255, 0.8);
 }
+
 .live_item_info.show {
   height: 0;
   overflow: hidden;
@@ -675,57 +703,38 @@ body {
 /* .leagueMatch:hover {height: auto; word-break:break-all; white-space: pre-wrap;  text-decoration: none;} */
 /* 右侧播放器 */
 .right {
-  width: 640px;
-  height: 480px;
-  border-radius: 4px;
-  /* background-color: #000; */
-  float: right;
-  border-radius: 5px;
-  position: relative;
-}
-
-.mp4 {
-  height: 100%;
-  width: 100%;
-  background-color: #fff;
-  border-radius: 5px;
-  background: black;
-  overflow: hidden;
-}
-.betPageLink {
   position: absolute;
-  width: 183px;
-  height: 48px;
-  right: 20px;
-  top: 12px;
+  top: 0;
+  bottom: 0;
+  left: 321px;
+  right: 0;
+  text-align: left;
+  background-color: rgb(44, 44, 44);
+  transition: all 1s;
 }
-.betPageLink a {
-  display: block;
-  width: 100%;
-  height: 100%;
+.right.on_list_hide {
+  left: 0px;
 }
-.betPageLink img {
-  width: 100%;
-  height: 100%;
+.video_item {
+  width: 320px;
+  background-color: #fff;
+  background: black;
+  display: inline-block;
+  margin: 10px;
+  transition: all 1s;
 }
-/* .video-js .vjs-big-play-button   { 
-  top: 50%;
-  left: 50%;
-  margin-left: -1.5rem;
-  margin-top: -.75rem;
-} */
-
-/* video::-webkit-media-controls-fullscreen-button {
-  display: none;
-} */
-
-/* video::-webkit-media-controls-{
-  display:none;
-} */
-/* video::-webkit-media-controls-enclosure{
-  display:none !important;
-} */
-
+.video_details {
+  background-color: rgb(80, 80, 80);
+  color: rgb(172, 172, 172);
+  font-size: 12px;
+  padding: 4px 10px;
+}
+.list_toggle {
+  position: absolute;
+  right: 0;
+  top: 0;
+  cursor: pointer;
+}
 /*滚动条样式*/
 .innerbox::-webkit-scrollbar {
   /*滚动条整体样式*/

@@ -5,6 +5,7 @@ import Router from 'vue-router'
 const live = () => import('@/views/live')
 const mLive = () => import('@/views/mLive')
 const test = () => import('@/views/live11')
+const watcher = () => import('@/views/watcher')
 
 Vue.use(Router)
 
@@ -19,9 +20,9 @@ export default new Router({
       name: 'mLive',
       component: mLive
     }, {
-      path: '/test',
-      name: 'test',
-      component: test
+      path: '/watcher',
+      name: 'watcher',
+      component: watcher
     }
   ]
 })

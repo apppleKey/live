@@ -1,61 +1,107 @@
 <template>
- <div class="app">
-   <video-player class="vjs-custom-skin mp4 " v-if="videosrc" width='640px' height='480px' ref="videoPlayer"   :options="playerOptions"
-     @ready="onPlayerReadied" 
-     @timeupdate="onTimeupdate">
-    </video-player>
-    <img class="logo" v-else :src="logoimg" alt="">
-    
-    <swiper :options="swiperOption" class="list_box">
-        <swiper-slide  :key="1" >
-          <div class="list_body innerbox">
-            <div>
-              <div class="live_name" @click="isOpenSort=!isOpenSort">
-                <div class="fl"><i :class="currentSort.icon"></i> {{currentSort.title}}
-                <span class="orange mlr" >{{currentSort.count||0}}</span>场</div>
-                <div class="fr"> <span class="mlr">分类</span>
-                  <img v-if="!isOpenSort" src="../../static/images/icon_down@2x.png" class="arrow" alt="">
-                  <img v-else src="../../static/images/icon_up@2x.png" class="arrow" alt="">
-                </div>
-              </div>
+  <div class="app">
+    <!-- 标题  -->
+    <div class="title">王者体育
+      <div class="item-select fr" @click="isShowDropdown=!isShowDropdown">项目选择</div>
+      <div class="select-bg" v-show="isShowDropdown" @click="isShowDropdown=!isShowDropdown">
+        <div class="select-dropdown" >
+          <div class="dropdown-item" v-for="(item,index) in data" 
+          :key="index" :class="{active:item.liveType==currentSort.liveType}"
+          @click.stop="selectSort(item)"
+          >
+            <i :class="item.icon"></i>
+            {{item.title }} <span :class="{red:item.liveType==currentSort.liveType}">{{item.count}}</span> 场
+          </div>
+        </div>
+      </div>
+    </div>
 
-              <div class="sortList" :class="{disable:item.count==0,active:item.liveType==currentSort.liveType}" @click="selectSort(item)" v-if="isOpenSort" v-for="item in data" :key="item.liveType">
-                <div class=""><i :class="item.icon"></i> {{item.title}}
-                <span class="orange mlr">{{item.count||0}}</span>场</div>
+    <!-- 视频播放器 -->
+    <video-player
+      class="vjs-custom-skin mp4"
+      v-if="videosrc"
+      width="640px"
+      height="480px"
+      ref="videoPlayer"
+      :options="playerOptions"
+      @ready="onPlayerReadied"
+      @timeupdate="onTimeupdate"
+    ></video-player>
+    <img class="logo" v-else :src="logoimg" alt>
+
+    <!-- 播放列表 -->
+    <swiper :options="swiperOption" class="list_box">
+      <swiper-slide :key="1">
+        <div class="list_body innerbox">
+          <div>
+            <div class="live_name" @click="isOpenSort=!isOpenSort">
+              <div class="fl">
+                <i :class="currentSort.icon"></i>
+                {{currentSort.title}}
+                <span
+                  class="orange mlr"
+                >{{currentSort.count||0}}</span>场
               </div>
-             
-              <div v-for="live in currentSort.list" :key="live.secId" 
-              class="live_item_info " @click="playVideo(live)" :class="{active:live.rtmpUrl==videosrc}">
-                <div class="status">
-                  <div class="fl">
-                    <div class="leagueMatch">
+              <div class="fr">
+                <span class="mlr">分类</span>
+                <img
+                  v-if="!isOpenSort"
+                  src="../../static/images/icon_down@2x.png"
+                  class="arrow"
+                  alt
+                >
+                <img v-else src="../../static/images/icon_up@2x.png" class="arrow" alt>
+              </div>
+            </div>
+
+            <div
+              class="sortList"
+              :class="{disable:item.count==0,active:item.liveType==currentSort.liveType}"
+              @click="selectSort(item)"
+              v-if="isOpenSort"
+              v-for="item in data"
+              :key="item.liveType"
+            >
+              <div class>
+                <i :class="item.icon"></i>
+                {{item.title}}
+                <span class="orange mlr">{{item.count||0}}</span>场
+              </div>
+            </div>
+
+            <div
+              v-for="live in currentSort.list"
+              :key="live.secId"
+              class="live_item_info"
+              @click="playVideo(live)"
+              :class="{active:live.rtmpUrl==videosrc}"
+            >
+              <div class="status">
+                <div class="fl">
+                  <div class="leagueMatch">
                     {{live.leagueMatch}}&nbsp;&nbsp;&nbsp;&nbsp;
                     {{live.homeTeam}} vs {{live.visitingTeam}}
                   </div>
                   <div class="live_time clearfix">
-                    <span class='fl'>{{live.exTime}} {{live.startTime|timeFromat}} - {{live.endTime|timeFromat}}</span>
-                  </div>
+                    <span
+                      class="fl"
+                    >{{live.exTime}} {{live.startTime|timeFromat}} - {{live.endTime|timeFromat}}</span>
                   </div>
                 </div>
-                  <div class="fr livingStateCon">
-                    <span v-if="live.rtmpUrl==videosrc" class="livingState red " >正在看播</span>
-                    <span v-else>
-
-                    <span v-if="live.isliving" class="livingState  ">正在直播</span>
-                    <span v-else class="livingState gray">即将直播</span>
-                    </span>
-                  </div>
+              </div>
+              <div class="fr livingStateCon">
+                <span v-if="live.rtmpUrl==videosrc" class="livingState red">正在看播</span>
+                <span v-else>
+                  <span v-if="live.isliving" class="livingState">正在直播</span>
+                  <span v-else class="livingState gray">即将直播</span>
+                </span>
               </div>
             </div>
           </div>
-
-         </swiper-slide>
-        </swiper>
-    </div>
-      
-
-  
-   
+        </div>
+      </swiper-slide>
+    </swiper>
+  </div>
 </template>
 
 <script>
@@ -66,6 +112,8 @@ const isProduction = process.env.NODE_ENV === "production";
 // console.log(process.env.NODE_ENV + "环境");
 import "swiper/dist/css/swiper.css";
 import { swiper, swiperSlide } from "vue-awesome-swiper";
+import { typeMap } from "@/assets/js/typeMap";
+console.log(typeMap);
 export default {
   name: "live",
   components: {
@@ -76,6 +124,7 @@ export default {
 
   data() {
     return {
+      isShowDropdown: false,
       currentSort: {}, //当前赛事分类
       isOpenSort: false, //展开分类
       swiperOption: {},
@@ -177,7 +226,7 @@ export default {
 
     getList() {
       this.loading = true;
-       this.$axios
+      this.$axios
         .get("/wewin-rest/auth", {
           params: { userName: "admin", password: "admin" }
         })
@@ -186,11 +235,11 @@ export default {
           var salt = res.data.randomKey;
 
           var bs64 = new Base64();
-          var json = JSON.stringify({ "sportsType": -1, "startTime": "" });
+          var json = JSON.stringify({ sportsType: -1, startTime: "" });
           var encode = bs64.encode(json);
           var md5Srt = md5(encode + salt);
           var Authorization = "Bearer " + res.data.token;
-     
+
           this.$axios({
             method: "post",
             url: "/wewin-rest/football/list",
@@ -201,7 +250,7 @@ export default {
             }
           }).then(res => {
             this.loading = false;
-        this.data = this.dealData(res.data);
+            this.data = this.dealData(res.data);
           });
         })
         .catch(err => {
@@ -211,46 +260,26 @@ export default {
         });
     },
     // 选择分类
-    selectSort(item){
-      if(!item.count)return;
-      this.currentSort=item;
-      this.isOpenSort=false;
-      console.log(item)
-
+    selectSort(item) {
+      if (!item.count) return;
+      this.isShowDropdown=false;
+      this.currentSort = item;
+      this.isOpenSort = false;
+      console.log(item);
     },
     // 序列化列表
     dealData(data) {
       var list = [];
-      // 类型(0 足球,1,篮球,2,网球,3 电竞,4 羽毛球,5 乒乓球,6 排球)
-      var typeMap = [
-        "足球",
-        "篮球",
-        "网球",
-        "电竞",
-        "羽毛球",
-        "乒乓球",
-        "排球"
-      ];
-      var icon = [
-        "icon-zuqiu iconfont",
-        "icon-lanqiu iconfont",
-        "icon-wangqiu iconfont",
-        "icon-dianjing iconfont",
-        "icon-yumaoqiu iconfont",
-        "icon-pingpangqiu iconfont",
-        "icon-paiqiu iconfont"
-      ];
       typeMap.map((v, i) => {
         list.push({
-          title: v + "赛事",
+          title: v.title,
           count: 0,
           liveType: i,
           list: [],
           isFlod: true,
-          icon: icon[i]
+          icon: v.icon
         });
       });
-      // console.log(list)
       data.map((v, i) => {
         this.isliving(v);
         list.map((vl, il) => {
@@ -358,22 +387,6 @@ export default {
 </script>
 
 <style scoped >
-.mp4 {
-  height: 21.1rem;
-  width: 37.5rem;
-  width: 100%;
-  background-color: #fff;
-  /* border-radius: 5px; */
-  background: black;
-  overflow: hidden;
-}
-.logo {
-  height: 21.1rem;
-  width: 37.5rem;
-  width: 100%;
-  /* width: 37.5rem; */
-}
-
 .app {
   vertical-align: center;
   position: relative;
@@ -384,6 +397,77 @@ export default {
   text-align: left;
   /* border-radius: 5px; */
 }
+
+/* 标题 */
+.title {
+  position: absolute;
+  height: 4.5rem;
+  line-height: 4.5rem;
+  font-size: 16px;
+  width: 100%;
+  text-align: center;
+  color: #1a2b3c;
+  z-index: 2;
+  background-color: #f7f7f7;
+}
+/* 下拉菜单 */
+.item-select {
+  position: absolute;
+  font-size: 12px;
+  margin-right: 0.4rem;
+  color: #000d19;
+  right: 0;
+  top: 0;
+  z-index: 3;
+}
+.select-bg {
+  position: fixed;
+  top: 4.5rem;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background-color: rgba(125, 133, 139, 0.501);
+  transition: all 1s;
+}
+.select-dropdown {
+  float: right;
+  width: 17.5rem;
+  height: 100%;
+  background-color: #fafdff;
+  
+  overflow-y: auto;
+}
+.dropdown-item {
+  height: 4.7rem;
+  line-height: 4.7rem;
+  font-size: 1.4rem;
+  color:  #9fa9b1;
+  text-align: left;
+}
+.dropdown-item.active{
+  background-color: #e6edf2;
+  color: #3a444c;
+}
+
+/* 视屏播放器 */
+.mp4 {
+  position: absolute;
+  top: 4.5rem;
+  height: 21.1rem;
+  width: 37.5rem;
+  width: 100%;
+  background-color: #fff;
+  background: black;
+  overflow: hidden;
+}
+.logo {
+  position: absolute;
+  top: 4.5rem;
+  height: 21.1rem;
+  width: 100%;
+}
+
+/* 播放列表 */
 .list_box {
   position: absolute;
   left: 0;
@@ -446,10 +530,10 @@ export default {
   cursor: pointer;
 }
 
-.sortList.disable{
-  color:gray;
+.sortList.disable {
+  color: gray;
 }
-.sortList.active{
+.sortList.active {
   background-color: #e1e7ed;
 }
 /* 子项详情 */
@@ -501,8 +585,8 @@ export default {
 .livingState {
   line-height: 5.05rem;
 }
-.live_item_info.active{
-background-color: rgba(0,0,0,.05);
+.live_item_info.active {
+  background-color: rgba(0, 0, 0, 0.05);
 }
 .video-js {
   height: 100% !important;

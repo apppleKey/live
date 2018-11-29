@@ -33,11 +33,16 @@ body {
 .ml18 {
   margin-left: 18px;
 }
+.mr18 {
+  margin-right: 18px;
+}
 
 .mlr {
   margin: 0 5px;
 }
-
+p{
+  margin: 0;
+}
 
 .yellow {
   color: #FFDD33;
@@ -65,7 +70,7 @@ body {
   display: none;
  }
   
- .vjs-rate-control {
+ .video-js .vjs-rate-control {
    margin: 0 10px;
 
   cursor: pointer;
