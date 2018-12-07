@@ -97,6 +97,7 @@ import Switcher from "@/components/Switcher";
 import { md5 } from "@/../static/lib/md5.js";
 import { os, Base64 } from "@/../static/lib/utils.js";
 const isProduction = process.env.NODE_ENV === "production";
+import { typeMap } from "@/assets/js/typeMap";
 export default {
   name: "live",
 
@@ -106,9 +107,7 @@ export default {
       isShowList: true,
       loading_right: false,
       flashNoSuport: false,
-      logoimg: isProduction
-        ? "/docs/static/images/default.png"
-        : "/static/images/default.png",
+      logoimg:  "/static/images/default.png",
 
       videosrc: "",
       data: [],
@@ -131,9 +130,7 @@ export default {
         autoPlay: true,
         flash: {
           hls: { withCredentials: false },
-          swf: isProduction
-            ? "/docs/static/media/video-js.swf"
-            : "/static/media/video-js.swf"
+          swf: "/static/media/video-js.swf"
         },
         html5: { hls: { withCredentials: false } },
         sources: [
@@ -143,9 +140,7 @@ export default {
               "rtmp://qqjs.flylemon.cn/football/live_9vjsl0f8?auth_key=1542650400-0-0-9557f19bfebae0d204465d9d28f6e395"
           }
         ],
-        poster: isProduction
-          ? "/docs/static/images/default.png"
-          : "/static/images/default.png"
+        poster:  "/static/images/default.png"
       }
     };
   },
@@ -323,18 +318,10 @@ export default {
     dealData(data) {
       var list = [];
       // 类型(0 足球,1,篮球,2,网球,3 电竞,4 羽毛球,5 乒乓球,6 排球)
-      var typeMap = [
-        "足球",
-        "篮球",
-        "网球",
-        "电竞",
-        "羽毛球",
-        "乒乓球",
-        "排球"
-      ];
+
       typeMap.map((v, i) => {
         list.push({
-          title: v + "赛事",
+          title: v.title,
           count: 0,
           liveType: i,
           list: [],
@@ -410,19 +397,10 @@ export default {
     //处理刷新请求的数据
     dealFreshData(data) {
       var list = [];
-      // 类型(0 足球,1,篮球,2,网球,3 电竞,4 羽毛球,5 乒乓球,6 排球)
-      var typeMap = [
-        "足球",
-        "篮球",
-        "网球",
-        "电竞",
-        "羽毛球",
-        "乒乓球",
-        "排球"
-      ];
+ 
       typeMap.map((v, i) => {
         list.push({
-          title: v + "赛事",
+          title: v.title,
           count: 0,
           liveType: i,
           list: [],
@@ -438,6 +416,10 @@ export default {
         data.map(v => {
           if (this.playerList[i].secId == v.secId) {
             isInData = true;
+            //谨防播放到一半修改了播放地址；
+             if(this.playerList[i].rtmpUrl != v.rtmpUrl){
+                this.playerList[i].rtmpUrl = v.rtmpUrl
+             }
             for (const key in v) {
               this.playerList[i][key] = v[key];
             }
@@ -446,7 +428,7 @@ export default {
 
         if (!isInData) {
           this.playerList.splice(i, 1);
-          delcount++
+          delcount++;
           i++;
         }
       }

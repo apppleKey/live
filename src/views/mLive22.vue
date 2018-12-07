@@ -244,11 +244,7 @@ export default {
             1
         );
         if (begin > tomorrow && begin < afterTomorrow) {
-          console.log(
-            this.moment(begin),
-            this.moment(tomorrow),
-            this.moment(afterTomorrow)
-          );
+
           item.exTime = "明日";
         } else if (begin > afterTomorrow) {
           var month = begin.getMonth() + 1; //月
@@ -258,29 +254,6 @@ export default {
       }
     },
 
-    //自己封装的moment
-    moment(date) {
-      var now = new Date(date.replace(/-/g, "/"));
-      var year = now.getFullYear(); //年
-      var month = now.getMonth() + 1; //月
-      var day = now.getDate(); //日
-
-      var hh = now.getHours(); //时
-      var mm = now.getMinutes(); //分
-      var ss = now.getSeconds(); //秒
-      var clock = year + "-";
-      if (month < 10) clock += "0";
-      clock += month + "-";
-      if (day < 10) clock += "0";
-      clock += day + " ";
-      if (hh < 10) clock += "0";
-      clock += hh + ":";
-      if (mm < 10) clock += "0";
-      clock += mm + ":";
-      if (ss < 10) clock += "0";
-      clock += ss;
-      return clock;
-    },
 
     // 折叠list
     flodList(item) {

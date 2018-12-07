@@ -6,6 +6,7 @@ const live = () => import('@/views/live')
 const mLive = () => import('@/views/mLive')
 const test = () => import('@/views/live11')
 const watcher = () => import('@/views/watcher')
+const swiper = () => import('@/views/swiper')
 
 Vue.use(Router)
 
@@ -23,6 +24,10 @@ export default new Router({
       path: '/watcher',
       name: 'watcher',
       component: watcher
+    }, {
+      path: '/swiper',
+      name: 'swiper',
+      component: swiper
     }
   ]
 })

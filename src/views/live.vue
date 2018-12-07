@@ -1,20 +1,20 @@
 <template>
   <div class="app">
-    <div class="left">
-      <div class="live_title">
+    <div class="left" v-loading="loading">
+      <div class="live_title" >
         <span>直播列表</span>
         <span>
           比赛直播中
-          <span class="yellow">{{totalliving}}</span>场
+          <span class="yellow">{{totalliving}}</span> 场
         </span>
       </div>
-      <div class="list_body innerbox">
+      <div class="list_body innerbox" >
         <div v-for="item in data " :key="item.title">
           <div class="live_name" @click="flodList(item)">
             <div class="fl">{{item.title}}</div>
             <div class="fr">
               <span class="orange">{{item.list.length||0}}</span>
-              <span class="mlr">场赛事</span>
+              <span class="mlr">场</span>
               <img v-if="!item.isFlod" src="../../static/images/icon_down@2x.png" class="arrow" alt>
               <img v-else src="../../static/images/icon_up@2x.png" class="arrow" alt>
             </div>
@@ -27,16 +27,18 @@
             class="live_item_info"
             @click="playVideo(live)"
             :class="{active:currentVideo.secId==live.secId}"
+            :title="live.leagueMatch+' -- '+
+                live.homeTeam+ ' vs ' +live.visitingTeam"
           >
-            <div class="status">
-              <div class="live_time clearfix">
+            <div class="status" >
+              <div class="live_time clearfix" :class="{red:currentVideo.secId==live.secId}">
                 <span
                   class="fl"
                 >{{live.exTime}} {{live.startTime|timeFromat}} - {{live.endTime|timeFromat}}</span>
                 <span v-if="live.isliving" class="livingState fr red">正在直播</span>
                 <span v-else class="livingState fr green">即将直播</span>
               </div>
-              <div class="leagueMatch">
+              <div class="leagueMatch" :class="{red:currentVideo.secId==live.secId}">
                 {{live.leagueMatch}}&nbsp;&nbsp;&nbsp;&nbsp;
                 {{live.homeTeam}} vs {{live.visitingTeam}}
               </div>
@@ -59,29 +61,30 @@
         @timeupdate="onTimeupdate"
       >当前浏览器版本太低，不支持播放此类视频</video-player>
       <img
-        v-if="!videosrc&&!flashNoSuport"
+        v-if="!videosrc||loading_right"
         :src="logoimg"
         alt
-        style="width:100%;height:100%;boder-radius:5px;"
+        style="width:100%;height:100%;boder-radius:5px; position:absolute;left: 0;top: 0;"
       >
       <embed
-        v-if="flashNoSuport"
+        v-show="flashNoSuport"
         src="./static/media/video-js.swf"
         quality="high"
         pluginspage="http://www.macromedia.com/go/getflashplayer"
         type="application/x-shockwave-flash"
         width="100%"
         height="100%"
-        style="postion:absolute"
+        style="width:100%;height:100%;boder-radius:5px; position:absolute;left: 0;top: 0;"
       >
+     <div v-show="flashNoSuport" class="flash-version-tips"><div class="flash-tips-cover"></div><div class="flash-tips-close">×</div><p class="flash-tips-text">您尚未安装 / 启用flash，无法正常播放，请查看<a href="http://www.adobe.com/go/getflashplayer" target="_blank" class="flash-get-link">安装教程</a>/<a href="https://www.douyu.com/cms/gong/201712/19/6921.shtml" target="_blank" class="flash-get-link">启用教程</a></p><p class="flash-tips-text">（安装 / 设置完成后，请重启浏览器）</p></div>
     </div>
 
     <!-- 注单链接 -->
-    <div class="betPageLink">
+    <!-- <div class="betPageLink">
       <a href="#">
         <img src="/static/images/bet.png" alt>
       </a>
-    </div>
+    </div> -->
     <!-- <div class="selectWrapper">
 
       Switch Tech：
@@ -110,6 +113,7 @@ import VueVideoPlayer from "vue-video-player";
 import ZN from "@/../static/lib/videojs.zh-CN.json";
 import * as videojs from "video.js/dist/video.js";
 const isProduction = process.env.NODE_ENV === "production";
+import { typeMap } from "@/assets/js/typeMap";
 export default {
   name: "live",
   components: {
@@ -118,11 +122,12 @@ export default {
   data() {
     return {
       loading_right: false,
+      loading:true,
       flashNoSuport: false,
-      logoimg: isProduction
-        ? "/docs/static/images/default.png"
-        : "/static/images/default.png",
+      listRequestCount:0,
+      logoimg: "/static/images/default.png",
       videosrc: "",
+      bs64: new Base64(),
       data: [],
       flvPlayer: null,
       initialized: false,
@@ -140,13 +145,11 @@ export default {
         overNative: true,
         autoplay: false,
         controls: true,
-        techOrder: ["flash", "html5"],
+        techOrder: ["flash"],
         sourceOrder: true,
         flash: {
           hls: { withCredentials: false },
-          swf: isProduction
-            ? "/docs/static/media/video-js.swf"
-            : "/static/media/video-js.swf"
+          swf: "/static/media/video-js.swf"
         },
         html5: { hls: { withCredentials: false } },
         sources: [
@@ -162,9 +165,7 @@ export default {
               "http://qqjs.flylemon.cn/football/live_9vjsl0f8.m3u8?auth_key=1542650400-0-0-c627ef6c2da7277ad814af283651182e"
           }
         ],
-        poster: isProduction
-          ? "/docs/static/images/default.png"
-          : "/static/images/default.png",
+        poster:"/static/images/default.png",
         controlBar: {
           timeDivider: false, // 时间分割线
           durationDisplay: false, // 总时间
@@ -202,7 +203,9 @@ export default {
 
   created() {
     if (os.isPc) {
-      this.getList();
+      this.getToken().then(() => {
+        this.getList();
+      });
       this.checkFlash();
     } else {
       this.$router.push("/mLive");
@@ -230,10 +233,10 @@ export default {
         } catch (e) {}
       }
       if (flag) {
-        console.log("flash ok");
+        // console.log("flash ok");
         this.flashNoSuport = false;
       } else {
-        console.log("flash error");
+        // console.log("flash error");
         this.flashNoSuport = true;
       }
     },
@@ -264,32 +267,52 @@ export default {
       this.playerOptions.autoplay = true;
     },
 
-    getList() {
-      this.loading = true;
-      this.$axios
-        .get("/wewin-rest/auth", {
-          params: { userName: "admin", password: "admin" }
-        })
-        .then(res => {
-          this.salt = res.data.randomKey;
-          this.bs64 = new Base64();
-          this.token = res.data.token;
-          var json = JSON.stringify({ sportsType: -1, startTime: "" });
-          var encode = this.bs64.encode(json);
-          var md5Srt = md5(encode + this.salt);
-          this.Authorization = "Bearer " + this.token;
-          this.$axios({
-            method: "post",
-            url: "/wewin-rest/football/list",
-            data: JSON.stringify({ object: encode, sign: md5Srt }),
-            headers: {
-              Authorization: this.Authorization,
-              "Content-Type": "application/json"
-            }
-          }).then(res => {
+    getToken() {
+      return new Promise((resolve, reject) => {
+        this.loading = true;
+        this.$axios
+          .get("/wewin-rest/auth", {
+            params: { userName: "admin", password: "admin", _t: new Date() * 1 }
+          })
+          .then(res => {
             this.loading = false;
-            this.data = this.dealData(res.data);
+            // console.log(res.data); //
+            this.salt = res.data.randomKey;
+            this.token = res.data.token;
+            resolve();
+          })
+          .catch(err => {
+            reject(err);
           });
+      });
+    },
+    getList() {
+      if(this.listRequestCount<=0){
+        this.loading = true;
+      }else{
+        this.listRequestCount++;
+      }
+
+      var json = JSON.stringify({ sportsType: -1, startTime: "" });
+      var encode = this.bs64.encode(json);
+      var md5Srt = md5(encode + this.salt);
+      this.Authorization = "Bearer " + this.token;
+      this.$axios({
+        method: "post",
+        url: "/wewin-rest/football/list?_t=" + new Date() * 1,
+        data: JSON.stringify({ object: encode, sign: md5Srt }),
+        headers: {
+          Authorization: this.Authorization,
+          "Content-Type": "application/json"
+        }
+      })
+        .then(res => {
+          this.loading = false;
+          this.data = this.dealData(res.data);
+          var timer = setTimeout(() => {
+            this.getList();
+            clearTimeout(timer);
+          }, 30000);
         })
         .catch(err => {
           this.loading = false;
@@ -298,6 +321,7 @@ export default {
         });
     },
 
+    // 获取对应清晰度的资源URL
     getDfUrl(type, cb) {
       var item = this.currentVideo;
       // console.log(type, item.secId, this.salt, this.token);
@@ -339,28 +363,43 @@ export default {
     // 序列化列表
     dealData(data) {
       var list = [];
-      // 类型(0 足球,1,篮球,2,网球,3 电竞,4 羽毛球,5 乒乓球,6 排球)
-      var typeMap = [
-        "足球",
-        "篮球",
-        "网球",
-        "电竞",
-        "羽毛球",
-        "乒乓球",
-        "排球"
-      ];
       typeMap.map((v, i) => {
         list.push({
-          title: v + "赛事",
+          title: v.title,
           count: 0,
           liveType: i,
           list: [],
-          isFlod: true
+          isFlod: true,
+          icon: v.icon
         });
       });
-      // console.log(list)
+      // 第二次刷新进入，如果正在播放的资源不在播放列表中，则准备更换资源
+      // if (this.videosrc) {
+      //   var flag = false;
+      //   data.map((v, i) => {
+      //     if (v.secId == this.currentVideo.secId) {
+      //       flag = true;
+      //       //  防止标清的时候资源有变
+      //       if (
+      //         this.currentVideo.m3u8Url != v.m3u8Url &&
+      //         this.currentVideo.rate == "标清"
+      //       ) {
+      //         this.currentVideo.m3u8Url = v.m3u8Url;
+      //       }
+      //     }
+      //   });
+
+      //   if (flag == false) {
+      //     this.videosrc = "";
+      //   }
+      // }
+
       data.map((v, i) => {
         this.isliving(v);
+        // 自动播放第一个
+        // if (!this.videosrc && v.isliving) {
+        //   this.playVideo(v);
+        // }
         list.map((vl, il) => {
           if (v.liveType == vl.liveType) {
             vl.count++;
@@ -368,16 +407,23 @@ export default {
           }
         });
       });
-      // console.log(list);
+      // 列表排序
+      list.sort((a, b) => {
+        return b.count - a.count;
+      });
+      //  list[0].list.length > 0&&this.playVideo(list[0].list[0]);
       return list;
     },
 
     //判断是否是正在直播
     isliving(item) {
       var now = new Date();
+      // var now = new Date("2018/12/04 21:00:00");
       var begin = new Date((item.startTime || "").replace(/-/g, "/"));
       var end = new Date((item.endTime || "").replace(/-/g, "/"));
-      if ((begin <= now) & (now <= end)) {
+      // console.log(item.startTime,item.endTime)
+      // console.log(begin <= now,now <= end)
+      if ((begin <= now) && (now <= end)) {
         item.isliving = true;
       } else {
         item.isliving = false;
@@ -392,11 +438,6 @@ export default {
             1
         );
         if (begin > tomorrow && begin < afterTomorrow) {
-          // console.log(
-          //   this.moment(begin),
-          //   this.moment(tomorrow),
-          //   this.moment(afterTomorrow)
-          // );
           item.exTime = "明日";
         } else if (begin > afterTomorrow) {
           var month = begin.getMonth() + 1; //月
@@ -404,30 +445,6 @@ export default {
           item.exTime = month + "月" + day + "日";
         }
       }
-    },
-
-    //自己封装的moment
-    moment(date) {
-      var now = date;
-      var year = now.getFullYear(); //年
-      var month = now.getMonth() + 1; //月
-      var day = now.getDate(); //日
-
-      var hh = now.getHours(); //时
-      var mm = now.getMinutes(); //分
-      var ss = now.getSeconds(); //秒
-      var clock = year + "-";
-      if (month < 10) clock += "0";
-      clock += month + "-";
-      if (day < 10) clock += "0";
-      clock += day + " ";
-      if (hh < 10) clock += "0";
-      clock += hh + ":";
-      if (mm < 10) clock += "0";
-      clock += mm + ":";
-      if (ss < 10) clock += "0";
-      clock += ss;
-      return clock;
     },
 
     // 折叠list
@@ -441,51 +458,41 @@ export default {
     // 点击播放直播
     playVideo(item) {
       if (!item.isliving) return this.$alert("还没有开播哦,敬请期待...");
-      // var lastRate = this.currentVideo.rate;//上个视屏的清晰度
       this.currentVideo = item;
-      // if (!lastRate) {
       this.currentVideo.rate = "流畅";
-      // } else {
-      // this.currentVideo.rate =lastRate;
-      // 载入该清晰度的视屏
-
-      // this.getDfUrl
-      // return;
-      // }
       this.loading_right = true;
       this.settingCtrl();
-      // this.destoryVideo();
       this.videosrc = item.rtmpUrl;
       this.playerOptions.sources[1].src = item.m3u8Url;
       this.playerOptions.sources[0].src = item.rtmpUrl;
       this.playerOptions.autoplay = true;
+      // this.$nextTick(() => {
+        // this.$refs.videoPlayer.player.play();
+      // });
     },
 
+    //设置控制器按钮部分
     settingCtrl() {
       var _this = this;
       setTimeout(() => {
-        // $(".vjs-time-control").hide();
-        // $(".vjs-duration-display").hide();
-        // $(".vjs-remaining-time-display").hide();
-        // $(".vjs-play-progress").hide();
-        // $(".vjs-progress-control").hide();
         if ($(".vjs-rate-control").length > 0) {
           return;
         }
         $(".vjs-control-bar")
-          .append(`<button class="vjs-rate-control vjs-menu-button vjs-menu-button-popup vjs-control vjs-button vjs-hiddenvjs-control vjs-button"
-     type="button" aria-live="polite"
-      aria-disabled="false" > <p>标清</p>
-      <span aria-hidden="true"
-      class="vjs-icon-placeholder">
-    </span>
-    <ul class="rate_select">
-    <li class="rate_select_item" type="3">超清</li>
-    <li class="rate_select_item" type="2">高清</li>
-    <li class="rate_select_item" type="1">标清</li>
-    <li class="rate_select_item active" type="0">流畅</li>
-    </ul>
-    <span class="vjs-control-text">清晰度</span></button>`);
+          .append(`<div class="vjs-rate-control vjs-menu-button
+           vjs-menu-button-popup vjs-control vjs-button vjs-hiddenvjs-control vjs-button"
+            type="button" aria-live="polite"
+              aria-disabled="false" > <p>标清</p>
+              <span aria-hidden="true"
+              class="vjs-icon-placeholder">
+            </span>
+            <ul class="rate_select">
+            <li class="rate_select_item" type="3">超清</li>
+            <li class="rate_select_item" type="2">高清</li>
+            <li class="rate_select_item" type="1">标清</li>
+            <li class="rate_select_item active" type="0">流畅</li>
+            </ul>
+            <span class="vjs-control-text">清晰度</span></div>`);
         $(".rate_select_item").map((i, v) => {
           if ($(v).html() == _this.currentVideo.rate) {
             $(v).addClass("active");
@@ -493,7 +500,11 @@ export default {
             $(v).removeClass("active");
           }
         });
+$(".vjs-control-bar").on("click", ".vjs-rate-control",function(){
+  console.log(11)
+  $(".rate_select").show();
 
+});
         $(".vjs-rate-control p").html(_this.currentVideo.rate);
         var isFullscreen = this.player.isFullscreen();
         $(".vjs-control-bar").on("click", ".rate_select_item", function() {
@@ -503,23 +514,15 @@ export default {
             _this.currentVideo.rate = $(ele).html();
             // console.log(this.player.isFullscreen)
             _this.loading_right = true;
-            isFullscreen && this.player.enterFullWindow();
+            // isFullscreen && this.player.enterFullWindow();
             // console.log("毁掉",$(ele).html())
             _this.settingCtrl();
           });
         });
       }, 1000);
     },
-    // 销毁电影
-    destoryVideo(cb) {
-      if (!this.flvPlayer) return;
-      this.flvPlayer.pause();
-      this.flvPlayer.unload();
-      this.flvPlayer.detachMediaElement();
-      this.flvPlayer.destroy();
-      this.flvPlayer = null;
-      // cb && cb();
-    }
+
+
   }
 };
 </script>
@@ -634,7 +637,8 @@ body {
   overflow: hidden;
   position: relative;
 }
-.live_item_info:hover{
+.live_item_info:hover,
+.live_item_info.active {
   background-color: rgba(255, 255, 255, 0.1);
 }
 .live_item_info_playing {
@@ -649,7 +653,7 @@ body {
   right: 0;
   top: 0;
   bottom: 0;
-  background-color: rgba(255, 255, 255, 0.8);
+  /* background-color: rgba(255, 255, 255, 0.8); */
 }
 .live_item_info.show {
   height: 0;
@@ -682,6 +686,8 @@ body {
   float: right;
   border-radius: 5px;
   position: relative;
+  background-color: rgba(182, 182, 182, 0.356);
+  /* background: url('/static/images/default.png'); */
 }
 
 .mp4 {
